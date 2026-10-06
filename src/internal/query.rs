@@ -407,8 +407,8 @@ impl Join {
 impl fmt::Display for Join {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
-            Join::Table(ref table_name) => table_name.fmt(formatter),
-            Join::Inner(ref lhs, ref rhs, ref on) => {
+            Join::Table(table_name) => table_name.fmt(formatter),
+            Join::Inner(lhs, rhs, on) => {
                 lhs.format_for_join(formatter)?;
                 formatter.write_str(" INNER JOIN ")?;
                 rhs.format_for_join(formatter)?;
@@ -416,7 +416,7 @@ impl fmt::Display for Join {
                 on.fmt(formatter)?;
                 Ok(())
             }
-            Join::Left(ref lhs, ref rhs, ref on) => {
+            Join::Left(lhs, rhs, on) => {
                 lhs.format_for_join(formatter)?;
                 formatter.write_str(" LEFT JOIN ")?;
                 rhs.format_for_join(formatter)?;
@@ -568,10 +568,11 @@ impl Select {
         &self,
         formatter: &mut fmt::Formatter,
     ) -> Result<(), fmt::Error> {
-        if self.column_names.is_empty() && self.condition.is_none() {
-            if let Join::Table(ref name) = self.from {
-                return formatter.write_str(name.as_str());
-            }
+        if self.column_names.is_empty()
+            && self.condition.is_none()
+            && let Join::Table(ref name) = self.from
+        {
+            return formatter.write_str(name.as_str());
         }
         formatter.write_str("(")?;
         fmt::Display::fmt(self, formatter)?;

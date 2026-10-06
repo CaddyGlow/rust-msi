@@ -16,3 +16,6 @@ returns `InvalidData` without panicking.
 Clippy compatibility: table row counting uses checked division, retaining
 zero rows for zero-width tables. The signature test fixture uses `write_all`
 so partial writes cannot silently truncate its stream contents.
+
+The workspace, including the FFI crate, uses Rust 1.99.0 and edition 2024.
+Edition migration updates preserve the parser APIs and regression fixtures.

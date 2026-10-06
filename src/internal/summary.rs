@@ -73,11 +73,7 @@ impl SummaryInfo {
             Some(PropertyValue::LpStr(template)) => {
                 let arch =
                     template.split_once(';').map_or(&**template, |x| x.0);
-                if arch.is_empty() {
-                    None
-                } else {
-                    Some(arch)
-                }
+                if arch.is_empty() { None } else { Some(arch) }
             }
             _ => None,
         }
@@ -323,14 +319,13 @@ impl SummaryInfo {
     pub fn keywords(&self) -> Vec<String> {
         if let Some(PropertyValue::LpStr(keywords)) =
             self.properties.get(PROPERTY_KEYWORDS)
+            && !keywords.is_empty()
         {
-            if !keywords.is_empty() {
-                return keywords
-                    .split("; ")
-                    .map(str::trim_end)
-                    .map(String::from)
-                    .collect();
-            }
+            return keywords
+                .split("; ")
+                .map(str::trim_end)
+                .map(String::from)
+                .collect();
         }
         Vec::new()
     }
