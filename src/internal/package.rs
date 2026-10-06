@@ -34,6 +34,24 @@ const STRING_POOL_TABLE_NAME: &str = "_StringPool";
 
 const MAX_NUM_TABLE_COLUMNS: usize = 32;
 
+fn metadata_string(value: &Value) -> io::Result<&str> {
+    value.as_str().ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            "Missing or invalid MSI metadata string",
+        )
+    })
+}
+
+fn metadata_integer(value: &Value) -> io::Result<i32> {
+    value.as_int().ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            "Missing or invalid MSI metadata integer",
+        )
+    })
+}
+
 // ========================================================================= //
 
 fn make_columns_table(long_string_refs: bool) -> Rc<Table> {
@@ -316,7 +334,7 @@ impl<F: Read + Seek> Package<F> {
                     table.read_rows(stream)?,
                 );
                 for row in rows {
-                    let table_name = row[0].as_str().unwrap().to_string();
+                    let table_name = metadata_string(&row[0])?.to_string();
                     if names.contains(&table_name) {
                         invalid_data!(
                             "Repeated key in {:?} table: {:?}",
@@ -347,9 +365,9 @@ impl<F: Read + Seek> Package<F> {
                     table.read_rows(stream)?,
                 );
                 for row in rows {
-                    let table_name = row[0].as_str().unwrap();
+                    let table_name = metadata_string(&row[0])?;
                     if let Some(cols) = columns_map.get_mut(table_name) {
-                        let col_index = row[1].as_int().unwrap();
+                        let col_index = metadata_integer(&row[1])?;
                         if cols.contains_key(&col_index) {
                             invalid_data!(
                                 "Repeated key in {:?} table: {:?}",
@@ -357,8 +375,8 @@ impl<F: Read + Seek> Package<F> {
                                 (table_name, col_index)
                             );
                         }
-                        let col_name = row[2].as_str().unwrap().to_string();
-                        let type_bits = row[3].as_int().unwrap();
+                        let col_name = metadata_string(&row[2])?.to_string();
+                        let type_bits = metadata_integer(&row[3])?;
                         cols.insert(col_index, (col_name, type_bits));
                     } else {
                         invalid_data!(
@@ -382,16 +400,14 @@ impl<F: Read + Seek> Package<F> {
             if comp.exists(&stream_name) {
                 let stream = comp.open_stream(&stream_name)?;
                 for value_refs in table.read_rows(stream)? {
-                    let table_name = value_refs[0]
-                        .to_value(&string_pool)
-                        .as_str()
-                        .unwrap()
-                        .to_string();
-                    let column_name = value_refs[1]
-                        .to_value(&string_pool)
-                        .as_str()
-                        .unwrap()
-                        .to_string();
+                    let table_name = metadata_string(
+                        &value_refs[0].to_value(&string_pool),
+                    )?
+                    .to_string();
+                    let column_name = metadata_string(
+                        &value_refs[1].to_value(&string_pool),
+                    )?
+                    .to_string();
                     let key = (table_name, column_name);
                     if validation_map.contains_key(&key) {
                         invalid_data!(
@@ -424,29 +440,27 @@ impl<F: Read + Seek> Package<F> {
                 let key = (table_name.clone(), column_name);
                 if let Some(value_refs) = validation_map.get(&key) {
                     let is_nullable = value_refs[2].to_value(&string_pool);
-                    if is_nullable.as_str().unwrap() == "Y" {
+                    if metadata_string(&is_nullable)? == "Y" {
                         builder = builder.nullable();
                     }
                     let min_value = value_refs[3].to_value(&string_pool);
                     let max_value = value_refs[4].to_value(&string_pool);
                     if !min_value.is_null() && !max_value.is_null() {
-                        let min = min_value.as_int().unwrap();
-                        let max = max_value.as_int().unwrap();
+                        let min = metadata_integer(&min_value)?;
+                        let max = metadata_integer(&max_value)?;
                         builder = builder.range(min, max);
                     }
                     let key_table = value_refs[5].to_value(&string_pool);
                     let key_column = value_refs[6].to_value(&string_pool);
                     if !key_table.is_null() && !key_column.is_null() {
                         builder = builder.foreign_key(
-                            key_table.as_str().unwrap(),
-                            key_column.as_int().unwrap(),
+                            metadata_string(&key_table)?,
+                            metadata_integer(&key_column)?,
                         );
                     }
                     let category_value = value_refs[7].to_value(&string_pool);
                     if !category_value.is_null() {
-                        let category = category_value
-                            .as_str()
-                            .unwrap()
+                        let category = metadata_string(&category_value)?
                             .parse::<Category>()
                             .ok();
                         if let Some(category) = category {
@@ -456,7 +470,9 @@ impl<F: Read + Seek> Package<F> {
                     let enum_values = value_refs[8].to_value(&string_pool);
                     if !enum_values.is_null() {
                         let enum_values: Vec<&str> =
-                            enum_values.as_str().unwrap().split(';').collect();
+                            metadata_string(&enum_values)?
+                                .split(';')
+                                .collect();
                         builder = builder.enum_values(&enum_values);
                     }
                 }
