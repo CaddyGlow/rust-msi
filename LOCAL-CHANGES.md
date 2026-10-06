@@ -12,3 +12,7 @@ The unchanged synthetic fuzz finding from 2026-10-05 is retained as
 `tests/data/msi-null-column-type.msi`, with provenance and SHA-256 in
 `tests/data/README.md`. `tests/malformed_metadata.rs` checks that the parser
 returns `InvalidData` without panicking.
+
+Clippy compatibility: table row counting uses checked division, retaining
+zero rows for zero-width tables. The signature test fixture uses `write_all`
+so partial writes cannot silently truncate its stream contents.

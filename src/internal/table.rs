@@ -112,8 +112,7 @@ impl Table {
             .map(|col| col.coltype().width(self.long_string_refs))
             .sum::<u64>();
         let num_columns = self.columns.len();
-        let num_rows =
-            if row_size > 0 { (data_length / row_size) as usize } else { 0 };
+        let num_rows = data_length.checked_div(row_size).unwrap_or(0) as usize;
         // The number of rows cannot exceed 65536, according to this FAQ:
         // http://www.installsite.org/pages/en/msifaq/a/1043.htm
         if num_rows > 65536 {
