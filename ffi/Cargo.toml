@@ -1,5 +1,6 @@
 [package]
 name = "msi_ffi"
+publish = false
 version.workspace = true
 authors.workspace = true
 description = "Basic FFI interface for reading Windows Installer (MSI) files, using the `msi` crate."
@@ -16,5 +17,5 @@ crate-type = ["lib", "cdylib"]
 
 [dependencies]
 chrono = "0.4.37"
-msi = { version = "0.10.0", path = "../" }
+msi = { package = "caddy-msi", version = "0.10.0", path = "../" }
 safer-ffi = { version = "0.1.6", features = ["headers", "python-headers"] }

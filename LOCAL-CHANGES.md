@@ -19,3 +19,6 @@ so partial writes cannot silently truncate its stream contents.
 
 The workspace, including the FFI crate, uses Rust 1.99.0 and edition 2024.
 Edition migration updates preserve the parser APIs and regression fixtures.
+
+The library is published as `caddy-msi` 0.10.0, retaining the `msi` library
+name. Repository metadata points to the fork; the FFI crate remains unpublished.

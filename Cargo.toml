@@ -5,7 +5,7 @@ default-members = [".", "ffi"]
 [workspace.package]
 version = "0.10.0"
 authors = ["Matthew D. Steele <mdsteele@alum.mit.edu>"]
-repository = "https://github.com/mdsteele/rust-msi"
+repository = "https://github.com/CaddyGlow/rust-msi"
 keywords = ["msi", "windows", "installer", "package"]
 license = "MIT"
 readme = "README.md"
@@ -13,16 +13,19 @@ edition = "2024"
 rust-version = "1.99"
 
 [package]
-name = "msi"
+name = "caddy-msi"
 version.workspace = true
 authors.workspace = true
-description = "Read/write Windows Installer (MSI) files"
+description = "Read/write Windows Installer (MSI) files with hardened schema metadata parsing"
 repository.workspace = true
 keywords.workspace = true
 license.workspace = true
 readme.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+
+[lib]
+name = "msi"
 
 [dependencies]
 byteorder = "1"
