@@ -133,8 +133,27 @@ impl Table {
     pub(crate) fn write_rows<W: Write>(
         &self,
         mut writer: W,
-        rows: Vec<Vec<ValueRef>>,
+        mut rows: Vec<Vec<ValueRef>>,
     ) -> io::Result<()> {
+        // Native MSI indexes compare encoded string reference numbers, not the
+        // lexical order of the decoded strings. Catalogs and ordinary tables
+        // must therefore be serialized in physical primary-key order.
+        let keys = self.primary_key_indices();
+        rows.sort_by(|left, right| {
+            for &index in &keys {
+                let encoded_key = |value: ValueRef| match value {
+                    ValueRef::Null | ValueRef::Binary => 0_i64,
+                    ValueRef::Int(number) => i64::from(number) + 0x8000_0000,
+                    ValueRef::Str(reference) => i64::from(reference.number()),
+                };
+                let order =
+                    encoded_key(left[index]).cmp(&encoded_key(right[index]));
+                if order != std::cmp::Ordering::Equal {
+                    return order;
+                }
+            }
+            std::cmp::Ordering::Equal
+        });
         for (index, column) in self.columns.iter().enumerate() {
             let coltype = column.coltype();
             for row in &rows {
@@ -299,6 +318,125 @@ impl<'a> ExactSizeIterator for Rows<'a> {}
 #[cfg(test)]
 mod tests {
     use super::Table;
+
+    #[test]
+    fn catalog_rows_use_physical_reference_order() {
+        use crate::{Column, Package, PackageType};
+        use std::io::{Cursor, Read};
+        let mut package =
+            Package::create(PackageType::Installer, Cursor::new(Vec::new()))
+                .unwrap();
+        package
+            .create_table(
+                "Custom",
+                vec![Column::build("Key").primary_key().string(64)],
+            )
+            .unwrap();
+        package
+            .create_table(
+                "zCustom",
+                vec![Column::build("Key").primary_key().string(64)],
+            )
+            .unwrap();
+        let tables_path = package.get_table("_Tables").unwrap().stream_name();
+        let columns_path =
+            package.get_table("_Columns").unwrap().stream_name();
+        let bytes = package.into_inner().unwrap().into_inner();
+        let mut compound =
+            cfb::CompoundFile::open(Cursor::new(bytes)).unwrap();
+        let mut data = Vec::new();
+        compound
+            .open_stream(tables_path)
+            .unwrap()
+            .read_to_end(&mut data)
+            .unwrap();
+        let references: Vec<_> = data
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|bytes| u16::from_le_bytes([bytes[0], bytes[1]]))
+            .collect();
+        assert!(references.windows(2).all(|pair| pair[0] < pair[1]));
+        data.clear();
+        compound
+            .open_stream(columns_path)
+            .unwrap()
+            .read_to_end(&mut data)
+            .unwrap();
+        let count = data.len() / 8;
+        let keys: Vec<_> = (0..count)
+            .map(|index| {
+                let table =
+                    u16::from_le_bytes([data[index * 2], data[index * 2 + 1]]);
+                let offset = (count + index) * 2;
+                let number =
+                    u16::from_le_bytes([data[offset], data[offset + 1]])
+                        ^ 0x8000;
+                (table, number)
+            })
+            .collect();
+        assert!(keys.windows(2).all(|pair| pair[0] < pair[1]));
+    }
+
+    #[test]
+    fn physical_custom_keys_preserve_logical_select_order() {
+        use crate::{Column, Insert, Package, PackageType, Select, Value};
+        use std::io::{Cursor, Read};
+        let mut package =
+            Package::create(PackageType::Installer, Cursor::new(Vec::new()))
+                .unwrap();
+        package
+            .create_table(
+                "Custom",
+                vec![
+                    Column::build("Key").primary_key().string(64),
+                    Column::build("Number").primary_key().int16(),
+                ],
+            )
+            .unwrap();
+        package
+            .insert_rows(Insert::into("Custom").rows(vec![
+                vec![Value::Str("z".into()), Value::Int(2)],
+                vec![Value::Str("a".into()), Value::Int(3)],
+                vec![Value::Str("z".into()), Value::Int(1)],
+            ]))
+            .unwrap();
+        let stream_path = package.get_table("Custom").unwrap().stream_name();
+        let bytes = package.into_inner().unwrap().into_inner();
+        let mut compound =
+            cfb::CompoundFile::open(Cursor::new(&bytes)).unwrap();
+        let mut data = Vec::new();
+        compound
+            .open_stream(stream_path)
+            .unwrap()
+            .read_to_end(&mut data)
+            .unwrap();
+        let count = data.len() / 4;
+        let keys: Vec<_> = (0..count)
+            .map(|index| {
+                let reference =
+                    u16::from_le_bytes([data[index * 2], data[index * 2 + 1]]);
+                let offset = (count + index) * 2;
+                let number =
+                    u16::from_le_bytes([data[offset], data[offset + 1]])
+                        ^ 0x8000;
+                (reference, number)
+            })
+            .collect();
+        assert!(keys.windows(2).all(|pair| pair[0] < pair[1]));
+        let mut reopened = Package::open(Cursor::new(&bytes)).unwrap();
+        let logical: Vec<_> = reopened
+            .select_rows(Select::table("Custom"))
+            .unwrap()
+            .map(|row| {
+                (row[0].as_str().unwrap().to_owned(), row[1].as_int().unwrap())
+            })
+            .collect();
+        assert_eq!(
+            logical,
+            vec![("a".into(), 3), ("z".into(), 1), ("z".into(), 2)]
+        );
+    }
 
     #[test]
     fn valid_table_name() {

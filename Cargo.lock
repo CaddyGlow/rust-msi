@@ -57,7 +57,7 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "caddy-msi"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "byteorder",
  "cfb",
@@ -349,7 +349,7 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
 name = "msi_ffi"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "caddy-msi",
  "chrono",

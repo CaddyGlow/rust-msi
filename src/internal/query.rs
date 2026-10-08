@@ -296,12 +296,21 @@ impl Join {
                     }
                 };
                 let stream_name = table.stream_name();
-                let rows = if comp.exists(&stream_name) {
+                let mut rows = if comp.exists(&stream_name) {
                     let stream = comp.open_stream(&stream_name)?;
                     table.read_rows(stream)?
                 } else {
                     Vec::new()
                 };
+                // Preserve the logical primary-key ordering of public Select
+                // results independently of the native physical reference order.
+                let key_indices = table.primary_key_indices();
+                rows.sort_by_cached_key(|row| {
+                    key_indices
+                        .iter()
+                        .map(|&index| row[index].to_value(string_pool))
+                        .collect::<Vec<_>>()
+                });
                 Ok(Rows::new(string_pool, table.clone(), rows))
             }
             Join::Inner(select1, select2, condition) => {
