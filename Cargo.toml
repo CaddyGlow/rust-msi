@@ -3,7 +3,7 @@ members = [".", "ffi"]
 default-members = [".", "ffi"]
 
 [workspace.package]
-version = "0.10.1"
+version = "0.10.2"
 authors = ["Matthew D. Steele <mdsteele@alum.mit.edu>"]
 repository = "https://github.com/CaddyGlow/rust-msi"
 keywords = ["msi", "windows", "installer", "package"]
@@ -28,10 +28,14 @@ rust-version.workspace = true
 name = "msi"
 
 [dependencies]
+cabinet = { package = "ms-cabinet", version = "0.1.4", default-features = false, optional = true }
 byteorder = "1"
 cfb = "0.14"
 encoding_rs = "0.8"
 uuid = "1"
+
+[features]
+media = ["dep:cabinet"]
 
 [dev-dependencies]
 clap = "2.27"

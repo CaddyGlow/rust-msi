@@ -22,3 +22,21 @@ Edition migration updates preserve the parser APIs and regression fixtures.
 
 The library is published as `caddy-msi` 0.10.0, retaining the `msi` library
 name. Repository metadata points to the fork; the FFI crate remains unpublished.
+
+## 0.10.1
+
+Preserve physical string-pool key ordering when serializing primary keys,
+including File sequences across string-pool insertion order. Historical parser
+fixtures and public database/FFI APIs remain intact.
+
+## 0.10.2
+
+Add the reusable `msi::media` contracts and optional `media` feature. Bounded
+planning, explicit sink finalization, sequence interpretation and payload
+extraction now work independently of ms-package. Cabinet codecs remain in the
+registry dependency ms-cabinet 0.1.4; the default dependency graph is unchanged.
+
+Adapted authoring code preserves the ms-package MIT attribution under
+licenses/ms-package/LICENSE. See docs/msi-media-refactoring-plan.md and
+docs/media-refactoring-validation.md for scope and qualification. The FFI crate
+remains unpublished and its existing APIs are unchanged.
